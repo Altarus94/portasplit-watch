@@ -1,0 +1,57 @@
+name: PortaSplit watch
+
+on:
+  schedule:
+    # Cadence ~10 min, volontairement IRREGULIERE (intervalles 8-12 min) pour ne
+    # pas taper a heure fixe. GitHub ajoute encore son propre retard variable.
+    # Gratuit : le depot est PUBLIC -> minutes d'Actions illimitees.
+    - cron: "3 * * * *"
+    - cron: "14 * * * *"
+    - cron: "22 * * * *"
+    - cron: "31 * * * *"
+    - cron: "43 * * * *"
+    - cron: "52 * * * *"
+  workflow_dispatch:            # + bouton "Run workflow" pour tester a la main
+
+permissions:
+  contents: write             # autorise le script a enregistrer son etat
+
+concurrency:
+  group: portasplit-watch
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      - name: Verifier le stock
+        env:
+          # Topic ntfy : stocke dans un SECRET du depot (Settings > Secrets and
+          # variables > Actions). N'apparait donc jamais dans le code public.
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          PRICE_MAX: "1100"         # prix max EUR (marge pour port / 999,99 ; filtre juste les revendeurs gonfles)
+          WATCH_POSTAL: "94100"     # ta zone (sert au lien ouvert par la notif)
+          WATCH_LAT: "48.7997"      # latitude du centre de ta zone (94100)
+          WATCH_LON: "2.4937"       # longitude du centre de ta zone (94100)
+          WATCH_RADIUS_KM: "40"     # rayon en km autour de chez toi
+          INCLUDE_ONLINE: "1"       # 1 = alerter aussi sur les dispos en ligne ; 0 = magasins proches seulement
+          DAILY_OK_HOUR: "18"       # heure FR du ping quotidien "tout va bien" (-1 pour le desactiver)
+        run: python watch.py
+
+      - name: Sauvegarder l'etat (anti-spam)
+        run: |
+          if [[ -n "$(git status --porcelain state.json)" ]]; then
+            git config user.name "portasplit-bot"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add state.json
+            git commit -m "chore: maj etat stock [skip ci]"
+            git push
+          fi

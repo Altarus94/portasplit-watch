@@ -1,0 +1,9 @@
+# Fichiers temporaires Python
+__pycache__/
+*.pyc
+
+# Réglages locaux Claude Code (propres à ce PC)
+.claude/
+
+# Mode d'emploi perso (contient un chemin local) — hors dépôt public
+DEMARRER-AVEC-CLAUDE-CODE.md
