@@ -37,13 +37,10 @@ jobs:
           # Topic ntfy : stocke dans un SECRET du depot (Settings > Secrets and
           # variables > Actions). N'apparait donc jamais dans le code public.
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-          PRICE_MAX: "1100"         # prix max EUR (marge pour port / 999,99 ; filtre juste les revendeurs gonfles)
-          WATCH_POSTAL: "94100"     # ta zone (sert au lien ouvert par la notif)
-          WATCH_LAT: "48.7997"      # latitude du centre de ta zone (94100)
-          WATCH_LON: "2.4937"       # longitude du centre de ta zone (94100)
-          WATCH_RADIUS_KM: "40"     # rayon en km autour de chez toi
-          INCLUDE_ONLINE: "1"       # 1 = alerter aussi sur les dispos en ligne ; 0 = magasins proches seulement
-          DAILY_OK_HOUR: "18"       # heure FR du ping quotidien "tout va bien" (-1 pour le desactiver)
+          WATCH_POSTAL: "94100"        # ta zone (livraison + lien de la notif)
+          CASTO_EAN: "8431312260509"   # EAN du Midea PortaSplit chez Castorama
+          CASTO_STORE_IDS: ""          # storeId magasins a surveiller (vide = livraison a domicile seule)
+          DAILY_OK_HOUR: "18"          # heure FR du ping quotidien "tout va bien" (-1 pour le desactiver)
         run: python watch.py
 
       - name: Sauvegarder l'etat (anti-spam)
