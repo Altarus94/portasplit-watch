@@ -27,6 +27,7 @@ import datetime as dt
 import json
 import os
 import pathlib
+import re
 import sys
 
 import requests
@@ -48,8 +49,16 @@ STORE_IDS = [s.strip() for s in os.environ.get("CASTO_STORE_IDS", "").split(",")
 # --- Amazon.fr --- (vide pour desactiver)
 AMAZON_ASIN = os.environ.get("AMAZON_ASIN", "B0CY2YW8BT").strip()
 
+# --- Boulanger --- (reference produit ; vide pour desactiver)
+BOULANGER_REF = os.environ.get("BOULANGER_REF", "1216685").strip()
+
 # --- Ping quotidien "tout va bien" ---
 DAILY_OK_HOUR = int(os.environ.get("DAILY_OK_HOUR", "18"))
+
+# --- Mode boucle (NAS / Docker) : LOOP=1 -> tourne en continu avec jitter ---
+LOOP = os.environ.get("LOOP", "").strip().lower() in ("1", "true", "yes", "oui")
+LOOP_MIN_S = int(os.environ.get("LOOP_MIN_SECONDS", "540"))   # 9 min
+LOOP_MAX_S = int(os.environ.get("LOOP_MAX_SECONDS", "780"))   # 13 min
 try:
     PARIS = ZoneInfo(os.environ.get("TZ_NAME", "Europe/Paris")) if ZoneInfo else None
 except Exception:
@@ -61,6 +70,7 @@ CASTO_API = "https://www.castorama.fr/casto-browse-mfe/api/fulfilment-options"
 CASTO_URL = ("https://www.castorama.fr/climatiseur-portasplit-midea-reversible-3500w/"
              f"{CASTO_EAN}_CAFR.prd")
 AMAZON_URL = f"https://www.amazon.fr/dp/{AMAZON_ASIN}"
+BOULANGER_URL = f"https://www.boulanger.com/ref/{BOULANGER_REF}"
 
 # availability Castorama qui signifient INDISPONIBLE (minuscules).
 # "stockable" = "vendu en magasin" mais pas forcement en stock -> indispo tant
@@ -165,6 +175,45 @@ def check_amazon():
     return None
 
 
+# ----------------------------------------------------------------- Boulanger
+def check_boulanger():
+    """Renvoie {cle:{desc,url}} si dispo en ligne, {} si indispo, None si
+    indetermine. Signal REEL = data-analytics_product_availability (pas le
+    JSON-LD). Lisible depuis une IP RESIDENTIELLE (bloque depuis un datacenter)."""
+    if not BOULANGER_REF:
+        return {}
+    try:
+        r = requests.get(BOULANGER_URL, headers={
+            "User-Agent": UA,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "fr-FR,fr;q=0.9",
+            "Accept-Encoding": "gzip, deflate",
+            "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none", "Upgrade-Insecure-Requests": "1",
+        }, timeout=25)
+    except requests.RequestException as e:
+        print(f"  [boulanger] erreur : {e} -> indetermine")
+        return None
+    if r.status_code != 200:
+        print(f"  [boulanger] HTTP {r.status_code} -> indetermine (IP datacenter ?)")
+        return None
+    txt = r.text
+    m = re.search(r'data-analytics_product_availability="(\w+)"', txt)
+    if not m:
+        print("  [boulanger] signal absent (bloque ?) -> indetermine")
+        return None
+    avail = m.group(1).lower()
+    unbuyable = ("product-delivery--unbuyable" in txt) or ('data-product-no-buyable="true"' in txt)
+    if avail == "true" and not unbuyable:
+        print("  [boulanger] EN STOCK")
+        return {"boulanger:livraison": {"desc": "Boulanger - dispo en ligne", "url": BOULANGER_URL}}
+    if avail == "false" or unbuyable:
+        print("  [boulanger] indisponible")
+        return {}
+    print(f"  [boulanger] ambigu (avail={avail} unbuyable={unbuyable}) -> indetermine")
+    return None
+
+
 # ----------------------------------------------------------------- state
 def load_state():
     if STATE_FILE.exists():
@@ -206,12 +255,12 @@ def notify(new_keys, info):
 
 def daily_ok_notify():
     body = ("Surveillance OK : le PortaSplit est toujours indisponible "
-            "(Castorama + Amazon).\n" + CASTO_URL)
+            "(Castorama + Boulanger + Amazon).\n" + CASTO_URL)
     _post_ntfy("PortaSplit watch - tout va bien", body, "low", "white_check_mark", CASTO_URL)
 
 
 # ----------------------------------------------------------------- main
-SOURCES = [("casto", check_castorama), ("amazon", check_amazon)]
+SOURCES = [("casto", check_castorama), ("boulanger", check_boulanger), ("amazon", check_amazon)]
 
 
 def main():
@@ -252,4 +301,17 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    if LOOP:
+        import random
+        import time
+        print(f"[boucle] check toutes les ~9-13 min (jitter). Ctrl-C pour arreter.")
+        while True:
+            try:
+                main()
+            except Exception as e:
+                print(f"  ! erreur inattendue : {e}")
+            d = random.randint(LOOP_MIN_S, LOOP_MAX_S)
+            print(f"  (prochain check dans ~{d // 60} min {d % 60}s)")
+            time.sleep(d)
+    else:
+        sys.exit(main())

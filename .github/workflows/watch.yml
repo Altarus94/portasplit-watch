@@ -1,16 +1,9 @@
 name: PortaSplit watch
 
 on:
-  schedule:
-    # Cadence ~10 min, volontairement IRREGULIERE (intervalles 8-12 min) pour ne
-    # pas taper a heure fixe. GitHub ajoute encore son propre retard variable.
-    # Gratuit : le depot est PUBLIC -> minutes d'Actions illimitees.
-    - cron: "3 * * * *"
-    - cron: "14 * * * *"
-    - cron: "22 * * * *"
-    - cron: "31 * * * *"
-    - cron: "43 * * * *"
-    - cron: "52 * * * *"
+  # Le robot tourne desormais sur le NAS Synology (IP residentielle -> couvre
+  # Castorama + Boulanger + Amazon). Le cron GitHub est DESACTIVE pour eviter
+  # les doubles alertes. workflow_dispatch reste pour un test manuel (Castorama).
   workflow_dispatch:            # + bouton "Run workflow" pour tester a la main
 
 permissions:
@@ -40,7 +33,8 @@ jobs:
           WATCH_POSTAL: "94100"        # ta zone (livraison + lien de la notif)
           CASTO_EAN: "8431312260509"   # EAN du Midea PortaSplit chez Castorama
           CASTO_STORE_IDS: ""          # storeId magasins a surveiller (vide = livraison a domicile seule)
-          AMAZON_ASIN: ""              # Amazon: desactive (GitHub se fait captcha 3/3) -> utiliser Keepa. Code garde si run ailleurs.
+          AMAZON_ASIN: ""              # Amazon: desactive sur GitHub (captcha datacenter) ; actif sur le NAS
+          BOULANGER_REF: ""            # Boulanger: desactive sur GitHub (Akamai bloque les datacenters) ; actif sur le NAS
           DAILY_OK_HOUR: "18"          # heure FR du ping quotidien "tout va bien" (-1 pour le desactiver)
         run: python watch.py
 
