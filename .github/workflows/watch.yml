@@ -1,9 +1,16 @@
 name: PortaSplit watch
 
 on:
-  # Le robot tourne desormais sur le NAS Synology (IP residentielle -> couvre
-  # Castorama + Boulanger + Amazon). Le cron GitHub est DESACTIVE pour eviter
-  # les doubles alertes. workflow_dispatch reste pour un test manuel (Castorama).
+  schedule:
+    # GitHub (IP datacenter) ne lit de facon fiable QUE Castorama ; le NAS
+    # (residentiel) couvrira Castorama + Boulanger + Amazon. EN ATTENDANT le NAS,
+    # on garde ce cron actif (Castorama). Cadence ~10 min, irreguliere.
+    - cron: "3 * * * *"
+    - cron: "14 * * * *"
+    - cron: "22 * * * *"
+    - cron: "31 * * * *"
+    - cron: "43 * * * *"
+    - cron: "52 * * * *"
   workflow_dispatch:            # + bouton "Run workflow" pour tester a la main
 
 permissions:
