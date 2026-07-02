@@ -40,6 +40,7 @@ jobs:
           WATCH_POSTAL: "94100"        # ta zone (livraison + lien de la notif)
           CASTO_EAN: "8431312260509"   # EAN du Midea PortaSplit chez Castorama
           CASTO_STORE_IDS: ""          # storeId magasins a surveiller (vide = livraison a domicile seule)
+          AMAZON_ASIN: "B0CY2YW8BT"    # ASIN Amazon.fr du PortaSplit (vide = desactive)
           DAILY_OK_HOUR: "18"          # heure FR du ping quotidien "tout va bien" (-1 pour le desactiver)
         run: python watch.py
 
