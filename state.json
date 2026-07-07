@@ -1,6 +1,8 @@
 {
   "_heartbeat": "2026-07-07",
-  "available": [],
+  "available": [
+    "casto:livraison"
+  ],
   "last_alert_date": "2026-07-07",
   "daily_ok_date": "2026-07-07"
 }
